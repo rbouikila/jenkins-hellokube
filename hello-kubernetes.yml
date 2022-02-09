@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hello-kubernetes
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: hello-kubernetes
+  namespace: hello-kubernetes
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello-kubernetes
+  template:
+    metadata:
+      labels:
+        app: hello-kubernetes
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - hello-kubernetes
+            topologyKey: "kubernetes.io/hostname"
+      securityContext:
+        runAsUser: 1000
+      containers:
+        - name: hello-kubernetes
+          image: rbouikila/hello-kubernetes:1.9
+          securityContext:
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: hello-kubernetes
+  namespace: hello-kubernetes
+spec:
+  selector:
+    app: hello-kubernetes
+  ports:
+    - port: 8080
+
+---
+
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: hello-kubernetes
+  namespace: hello-kubernetes
+  annotations:
+    ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: hello.oowy.fr
+    http:
+      paths:
+        - path: /
+          backend:
+            serviceName: hello-kubernetes
+            servicePort: 8080
